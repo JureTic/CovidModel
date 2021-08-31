@@ -2,19 +2,22 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Model {
-    private static int id = 0;
+    //private static int id = 0;
     private Gospodinjstvo[] gospodinjstva;
     private Posameznik[] posamezniki;
     private StreznikSS streznik;
+    private int povprecjeSS;
 
     private int st_gospodinjstev;
 
 
-    public Model(int st_gospodinjstev){
+    public Model(int st_gospodinjstev, int povprecjeSS){
+        this.povprecjeSS = povprecjeSS;
         this.streznik = new StreznikSS();
         this.st_gospodinjstev = st_gospodinjstev;
         this.gospodinjstva = narediGospodinjstva(st_gospodinjstev);
         this.posamezniki = indeksiraj_uporabnike(gospodinjstva);
+
 
 
     }
@@ -31,6 +34,10 @@ public class Model {
             for(int k = 0; k<gospodinjstva[i].getClani_gospodinjstva().length; k++){
                 posamezniki[id] = gospodinjstva[i].getClani_gospodinjstva()[k];
                 gospodinjstva[i].getClani_gospodinjstva()[k].setId(id);
+                if (gospodinjstva[i].getClani_gospodinjstva()[k].isContact_tracing()){
+                    gospodinjstva[i].getClani_gospodinjstva()[k].setAplikacija_za_sledenje_stikom(new AplikacijaSS(id,this.streznik,gospodinjstva[i].getClani_gospodinjstva()[k]));
+                }
+
                 gospodinjstva[i].getClani_gospodinjstva()[k].setPogosti_stiki(new Random().ints(0, st_clanov).distinct().limit(20).toArray());
                 id++;
             }
@@ -52,49 +59,49 @@ public class Model {
             //en clan
             if(randomNum < 327){
 
-                novo = new Gospodinjstvo(1,this.streznik);
+                novo = new Gospodinjstvo(1, this.povprecjeSS);
 
             }
             //dva clana
             else if (randomNum<581 ){
 
-                novo = new Gospodinjstvo(2,this.streznik);
+                novo = new Gospodinjstvo(2, this.povprecjeSS);
 
             }
             //trije clani
             else if (randomNum<767){
 
-                novo = new Gospodinjstvo(3,this.streznik);
+                novo = new Gospodinjstvo(3, this.povprecjeSS);
 
             }
             //stirje clani
             else if (randomNum<915){
 
-                novo = new Gospodinjstvo(4,this.streznik);
+                novo = new Gospodinjstvo(4, this.povprecjeSS);
 
             }
             //pet clanov
             else if (randomNum<967){
 
-                novo = new Gospodinjstvo(5,this.streznik);
+                novo = new Gospodinjstvo(5, this.povprecjeSS);
 
             }
             //sest clanov
             else if (randomNum<988){
 
-                novo = new Gospodinjstvo(6,this.streznik);
+                novo = new Gospodinjstvo(6, this.povprecjeSS);
 
             }
             //sedem clanov
             else if (randomNum<996){
 
-                novo = new Gospodinjstvo(7,this.streznik);
+                novo = new Gospodinjstvo(7, this.povprecjeSS);
 
             }
             //osem clanov
             else{
 
-                novo = new Gospodinjstvo(8,this.streznik);
+                novo = new Gospodinjstvo(8, this.povprecjeSS);
 
             }
 
@@ -108,7 +115,7 @@ public class Model {
         return gospodinjstva;
 
     }
-
+/*
     public static int getId() {
         return id;
     }
@@ -116,7 +123,7 @@ public class Model {
     public static void setId(int id) {
         Model.id = id;
     }
-
+*/
     public Gospodinjstvo[] getGospodinjstva() {
         return gospodinjstva;
     }

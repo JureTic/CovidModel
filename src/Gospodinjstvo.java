@@ -5,18 +5,22 @@ public class Gospodinjstvo {
 
     private int clanov;
     private Posameznik[] clani_gospodinjstva;
-    private boolean samoizolacija;
 
-    public Gospodinjstvo (int clanov, StreznikSS streznik) {
+    public Gospodinjstvo (int clanov, int povprecjeSS) {
         this.clanov = clanov;
-        this.samoizolacija = false;
 
         this.clani_gospodinjstva= new Posameznik[clanov];
 
         for (int i = 0; i<clanov; i++){
-            clani_gospodinjstva[i] = new Posameznik(2, this, streznik);
+            clani_gospodinjstva[i] = new Posameznik(2, this, povprecjeSS);
         }
+    }
 
+    public void samoizoliraj_clane(){
+        for (Posameznik p: clani_gospodinjstva){
+            //10
+            p.opozorilo_druzine(10);
+        }
     }
 
     public static double[] getVerjetnosti_velikosti_gos() {
@@ -43,11 +47,4 @@ public class Gospodinjstvo {
         this.clani_gospodinjstva = clani_gospodinjstva;
     }
 
-    public boolean isSamoizolacija() {
-        return samoizolacija;
-    }
-
-    public void setSamoizolacija(boolean samoizolacija) {
-        this.samoizolacija = samoizolacija;
-    }
 }

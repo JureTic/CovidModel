@@ -7,6 +7,11 @@ public class Posameznik {
     private boolean imun;
     private boolean samoizolacija;
     private boolean contact_tracing;
+    private boolean pozitivenTest;
+
+    private boolean asimptomatski;
+
+    private boolean debuging;
 
     /*
     1 = otrok
@@ -17,24 +22,24 @@ public class Posameznik {
 
     //je enak -1 ce oseba ni okuzena
     private int dni_okuzen;
-    private int dni_v_samoiz;
     private int id;
     private Gospodinjstvo gospodinjstvo;
     private int[] pogosti_stiki;
     private AplikacijaSS aplikacija_za_sledenje_stikom;
+    private int dodeljena_samoizolacija;
 
-    final private int trajanje_bolezni = 14;
+    final private int trajanje_bolezni = 15;
     //vzamemo povprecje
     final private int cas_do_simptomov = 5;
     final private int cas_do_kuznosti = 2;
 
     //povprecno stevilo ljudi z aplikacijo za sledenje stikom
-    final private int ss_povprecje = 50;
+    private int ss_povprecje;
 
     //po koliko casa gremo iz samoizolacije
-    final private int izhod_iz_samoiz = 7;
+    final private int izhod_iz_samoiz = 6;
 
-    public Posameznik(int starost, Gospodinjstvo gospodinjstvo, StreznikSS streznik){
+    public Posameznik(int starost, Gospodinjstvo gospodinjstvo, int ss_nastavljeni_povprecje){
         this.starost = starost;
         this.okuzen = false;
         this.kuzen = false;
@@ -43,20 +48,29 @@ public class Posameznik {
         this.samoizolacija = false;
         this.gospodinjstvo = gospodinjstvo;
         this.dni_okuzen = -1;
-        this.dni_v_samoiz = 0;
+        this.ss_povprecje=ss_nastavljeni_povprecje;
         Random rand = new Random();
 
-        if(rand.nextInt(100) <= this.ss_povprecje){
-            this.aplikacija_za_sledenje_stikom=new AplikacijaSS(this.id, streznik, this);
+        if(rand.nextInt(100) < this.ss_povprecje){
             this.contact_tracing = true;
+        }
+
+        //moznost da bo okuzb posameznika asimptomatska
+        if(rand.nextInt(100) < 40){
+            this.asimptomatski = true;
+        }
+        else{
+            this.asimptomatski = false;
         }
 
     }
 
-    public void opozorilo_aplikacije(){
+    public void opozorilo_aplikacije(int dodeljena_samoizolacija){
         if(!this.imun){
             this.samoizolacija = true;
-            this.dni_v_samoiz = 0;
+            if(this.dodeljena_samoizolacija < dodeljena_samoizolacija){
+                this.dodeljena_samoizolacija = dodeljena_samoizolacija;
+            }
         }
         else{
             this.aplikacija_za_sledenje_stikom.setStatus(1);
@@ -64,53 +78,91 @@ public class Posameznik {
 
     }
 
+    public void opozorilo_druzine(int dodeljena_samoizolacija){
+        if (!this.imun){
+            this.samoizolacija = true;
+            if(this.dodeljena_samoizolacija < dodeljena_samoizolacija){
+                this.dodeljena_samoizolacija = dodeljena_samoizolacija;
+            }
+            if (this.contact_tracing){
+                this.aplikacija_za_sledenje_stikom.setStatus(2);
+            }
+        }
+        this.debuging = true;
+    }
 
     public void opravi_dan(int datum){
+        //System.out.println(this.dodeljena_samoizolacija + " | " + this.samoizolacija + " | " + this.imun);
+
         if(okuzen){
             this.dni_okuzen = this.dni_okuzen+1;
 
             if(this.dni_okuzen>this.cas_do_kuznosti){
                 this.kuzen=true;
             }
-            if(this.dni_okuzen>=this.cas_do_simptomov){
-                //predvidevamo da ko oseba opazi da je bolan se gre testirati in v samoizolacijo
-                this.samoizolacija=true;
+            //uporabnik se je testiral pozitivno
+            if(simptomi() && !pozitivenTest && !asimptomatski){
+                this.pozitivenTest = true;
+                //celo gospodinjstvo gre v samoizolacijo
+                this.gospodinjstvo.samoizoliraj_clane();
+
                 if(this.contact_tracing){
                     this.aplikacija_za_sledenje_stikom.javi_okuzbo(datum);
                 }
             }
-            if(this.dni_okuzen>trajanje_bolezni) {
+            //bolezen se je koncala
+            if(this.dni_okuzen>=trajanje_bolezni) {
+
+                if (this.dodeljena_samoizolacija!=0){
+/*
+                    System.out.println(this.dni_okuzen + " | " + this.dodeljena_samoizolacija + " | " + this.isImun() + " | " + this.debuging);
+                    System.out.println(this.gospodinjstvo.getClanov());
+*/
+                }
+
+                debuging=false;
+                this.kuzen = false;
+                this.pozitivenTest = false;
                 this.okuzen = false;
                 this.samoizolacija = false;
-                this.dni_v_samoiz = 0;
                 this.imun = true;
+                this.dodeljena_samoizolacija = -1;
                 this.dni_okuzen = -1;
-                if(contact_tracing){
+                if(this.contact_tracing){
                     this.aplikacija_za_sledenje_stikom.setStatus(1);
                 }
             }
         }
+
         //this is acting wierd
         if(this.samoizolacija){
-            if(this.dni_v_samoiz > this.izhod_iz_samoiz && this.dni_okuzen < this.cas_do_simptomov){
+            if(this.dodeljena_samoizolacija == 0){
                 this.samoizolacija = false;
-                this.dni_v_samoiz = 0;
-                if (contact_tracing){
+                if (this.contact_tracing){
                     this.aplikacija_za_sledenje_stikom.setStatus(1);
                 }
+                this.debuging = false;
             }
             else{
-                this.dni_v_samoiz++;
+                this.dodeljena_samoizolacija--;
             }
 
         }
-
+/*
         //aplikacija naredi svoj cikel
         if (this.contact_tracing){
             this.aplikacija_za_sledenje_stikom.procesiraj_dan(datum);
         }
+*/
 
-
+    }
+    public boolean simptomi(){
+        if (this.dni_okuzen>=this.cas_do_simptomov){
+            return true;
+        }
+        else{
+            return false;
+        }
     }
 
     public boolean isOkuzen() {

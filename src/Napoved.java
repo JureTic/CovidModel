@@ -1,5 +1,6 @@
 import org.apache.commons.math3.distribution.GammaDistribution;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.Scanner;
@@ -29,11 +30,12 @@ public class Napoved {
 
 
     //procesiramo stik osebe z nekim drugim akterjev v modelu
-    public static void naredi_stik(Posameznik oseba, int id_stika, double verjetnost_okuzbe, int date){
+    public static void naredi_stik(Posameznik oseba, Posameznik id_stika, double verjetnost_okuzbe, int date){
 
         Random rand = new Random();
         Posameznik clen1 = oseba;
-        Posameznik clen2 = novModel.getPosamezniki()[id_stika];
+        Posameznik clen2 = id_stika;
+
 
         //zabelezimo stik ce imata oba aplikacojo za ss
         if(clen1.isContact_tracing() && clen2.isContact_tracing()){
@@ -44,7 +46,10 @@ public class Napoved {
         //procesiramo okuzbo
         if(clen1.isOkuzen() && clen2.isOkuzen()){
         }
-        else if(clen1.isKuzen() && !clen2.isImun()){
+        else if(clen1.isKuzen() && !clen2.isImun() && !clen2.isOkuzen()){
+            if (clen1.isImun()){
+                System.out.println("ERROR");
+            }
             //verjetnost da se clen2 okuzi
             if(rand.nextInt(1000) <= verjetnost_okuzbe){
                 //clen2 se okuzi
@@ -52,7 +57,10 @@ public class Napoved {
                 clen2.setDni_okuzen(0);
             }
         }
-        else if(!clen1.isImun() && clen2.isKuzen()){
+        else if(!clen1.isImun() && clen2.isKuzen() && !clen1.isOkuzen()){
+            if (clen2.isImun()){
+                System.out.println("ERROR");
+            }
             //verjetnost da se clen1 okuzi
             if(rand.nextInt(1000) <= verjetnost_okuzbe){
                 //clen1 se okuzi
@@ -94,26 +102,36 @@ public class Napoved {
         if(family_contacts>oseba.getGospodinjstvo().getClanov()){
             dejanskih_kontaktov = oseba.getGospodinjstvo().getClanov();
         }
-        int[] household_contacts = new Random().ints(0, oseba.getGospodinjstvo().getClani_gospodinjstva().length).distinct().limit((long)dejanskih_kontaktov).toArray();
+        int[] household_contacts = new Random().ints(0, oseba.getGospodinjstvo().getClani_gospodinjstva().length).distinct().limit(dejanskih_kontaktov).toArray();
 
         //System.out.println(Arrays.toString(old_contacts));
 
         //gremo cez vse kontakte in procesirao stike
 
+
+
         if(!oseba.isSamoizolacija()){
             for (int i = 0; i<old_contacts.length; i++){
-                naredi_stik(oseba,oseba.getPogosti_stiki()[old_contacts[i]],infection_outside,date);
+                Posameznik clen2 = novModel.getPosamezniki()[oseba.getPogosti_stiki()[old_contacts[i]]];
+                if (!clen2.isSamoizolacija()){
+                    naredi_stik(oseba,clen2,infection_outside,date);
+                }
 
             }
 
             for (int i = 0; i<random_contacts.length; i++){
-                naredi_stik(oseba,random_contacts[i],infection_outside,date);
+                Posameznik clen2 = novModel.getPosamezniki()[random_contacts[i]];
+                if (!clen2.isSamoizolacija()) {
+                    naredi_stik(oseba, clen2, infection_outside, date);
+                }
             }
 
         }
 
         for (int i = 0; i<household_contacts.length; i++){
-            naredi_stik(oseba,oseba.getGospodinjstvo().getClani_gospodinjstva()[household_contacts[i]].getId(),infection_family,date);
+            Posameznik clen2 = novModel.getPosamezniki()[oseba.getGospodinjstvo().getClani_gospodinjstva()[household_contacts[i]].getId()];
+            naredi_stik(oseba,clen2,infection_family,date);
+
         }
 
     }
@@ -128,12 +146,9 @@ public class Napoved {
     }
 
 
-    public static void main(String[] args) {
+    public static void izvedi_simulacijo(int st_gospodinjstev, int st_dni, int povprecjeSS){
 
-        Scanner sc = new Scanner(System.in);
-        int st_gospodinjstev = sc.nextInt();
-        int st_dni = sc.nextInt();
-        novModel = new Model(st_gospodinjstev);
+        novModel = new Model(st_gospodinjstev,povprecjeSS);
 
 
         /*
@@ -142,15 +157,31 @@ public class Napoved {
 
         en dan v nasi simulaciji predstavlja en potek for zanke
          */
-        okuzi_posameznike(15);
+        okuzi_posameznike(600);
 
         int[] okuzenih = new int[st_dni];
-        for (int i = 0; i < st_dni; i++){
 
+        int[] izoliranih = new int[st_dni];
+
+        int[] imunih = new int[st_dni];
+
+        for (int i = 0; i < st_dni; i++){
+            //System.out.println("------------------------ " + i + "----------------------------" );
             int st_okuzenih = 0;
+            int st_izoliranih = 0;
+            int st_imunih = 0;
             novModel.getStreznik().procesiraj_streznik(i);
 
             //en dan pojdi od zacetka, en dan od konca za lepso razporeditev
+
+            //vsaka aplikacija naredi svoj cikel
+            for (int o = 0; o<novModel.getPosamezniki().length; o++){
+                if (novModel.getPosamezniki()[o].isContact_tracing()){
+                    novModel.getPosamezniki()[o].getAplikacija_za_sledenje_stikom().procesiraj_dan(i);
+                }
+            }
+
+
             for (int o = 0; o<novModel.getPosamezniki().length; o++){
 
                 Posameznik oseba = novModel.getPosamezniki()[o];
@@ -160,12 +191,68 @@ public class Napoved {
                 if(oseba.isOkuzen()){
                     st_okuzenih++;
                 }
+
+                if(oseba.isSamoizolacija()){
+                    st_izoliranih++;
+                }
+
+                if(oseba.isImun()){
+                    st_imunih++;
+                }
+
             }
 
+
+            /*
+            if (i%2 == 0){
+
+            }
+            else{
+                for (int o = novModel.getPosamezniki().length-1; o>=0 ; o--){
+
+                    Posameznik oseba = novModel.getPosamezniki()[o];
+                    oseba.opravi_dan(i);
+                    stiki(oseba,i);
+
+                    if(oseba.isOkuzen()){
+                        st_okuzenih++;
+                    }
+                }
+            }
+*/
+
             okuzenih[i]=st_okuzenih;
+            izoliranih[i]=st_izoliranih;
+            imunih[i] = st_imunih;
 
         }
         System.out.println(Arrays.toString(okuzenih));
+        System.out.println(Arrays.toString(izoliranih));
+        System.out.println(Arrays.toString(imunih));
 
+    }
+
+    public static void main(String[] args) {
+/*
+        Scanner sc = new Scanner(System.in);
+        int st_gospodinjstev = sc.nextInt();
+        int st_dni = sc.nextInt();
+ */
+        izvedi_simulacijo(110000,150,10);
+        izvedi_simulacijo(110000,150,30);
+        izvedi_simulacijo(110000,150,50);
+
+/*
+
+        izvedi_simulacijo(110000,150,0);
+        izvedi_simulacijo(110000,150,20);
+        izvedi_simulacijo(110000,150,40);
+        izvedi_simulacijo(110000,150,60);
+        izvedi_simulacijo(110000,150,70);
+        izvedi_simulacijo(110000,150,80);
+        izvedi_simulacijo(110000,150,90);
+        izvedi_simulacijo(110000,150,100);
+
+ */
     }
 }

@@ -39,20 +39,25 @@ public class AplikacijaSS {
         this.lastnik = lastnik;
     }
 
-    public void procesiraj_dan(int datum){
-
+    public void ustvari_EID(int datum){
         //aplikacija ustvari nov EID
-        this.EID = DigestUtils.sha256Hex(Integer.toString(this.app_id) + Integer.toString(datum));
-
+        this.EID = DigestUtils.sha256Hex(this.app_id + Integer.toString(datum));
         //aplikacija shrani EID v lokalno shrambo
         this.pretekli_EID.add(new StikSS(datum,this.EID));
+        //System.out.println(EID);
+    }
+
+    public void procesiraj_dan(int datum){
+
+
+        ustvari_EID(datum);
 
         pocisti_stike(datum);
 
-        preveriOkuzbo();
+        //preveriOkuzbo();
 
         if (status == 1){
-        //    preveriOkuzbo();
+            preveriOkuzbo();
         }
 
     }
@@ -63,8 +68,9 @@ public class AplikacijaSS {
             if (ogrozeni_EIDji_filter.mightContain(stik.getEIDstika())){
                 //PANIC
                 //System.out.println("PANIC");
-                lastnik.opozorilo_aplikacije();
                 this.status = 2;
+                lastnik.opozorilo_aplikacije(7);
+
             }
         }
     }
@@ -92,11 +98,11 @@ public class AplikacijaSS {
             zabelezeni_stiki.subList(0, odrez).clear();
         }
 
-        //hranimo svoje EID za 6 dni nazaj (obdobje v katerem bi bili lahko kuzni)
+        //hranimo svoje EID za 5 dni nazaj (obdobje v katerem bi bili lahko kuzni)
 
         odrez = 0;
         for (StikSS stikSS : pretekli_EID) {
-            if (stikSS.getDateStamp() + 6 < datum) {
+            if (stikSS.getDateStamp() + 3 < datum) {
                 odrez++;
             }
         }
